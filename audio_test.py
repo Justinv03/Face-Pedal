@@ -3,7 +3,7 @@ from pedalboard import Distortion, Chorus, LadderFilter
 
 # Set the input and output devices
 input_device = "USB Audio CODEC "
-output_device = "MacBook Pro Speakers"
+output_device = "MacBook Pro Speakers"q 
 
 wah = LadderFilter(
     mode = LadderFilter.Mode.BPF12,

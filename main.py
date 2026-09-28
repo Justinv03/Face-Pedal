@@ -48,6 +48,7 @@ JAW_MAX = 0.80
 
 WAH_ON_THRESHOLD = 0.15
 WAH_OFF_THRESHOLD = 0.08
+WAH_SMILE_LIMIT = 0.35
 
 distortion_active = False
 chorus_active = False
@@ -120,21 +121,21 @@ with AudioStream(
             wah_cutoff = WAH_MIN_HZ + wah_position * (WAH_MAX_HZ - WAH_MIN_HZ)
             wah.cutoff_hz = wah_cutoff
 
-            if not wah_active and jaw_open > WAH_ON_THRESHOLD:
-                wah_active = True
-
-            elif wah_active and jaw_open < WAH_OFF_THRESHOLD:
-                wah_active = False
-
             smile_left = blendshape_values.get("mouthSmileLeft", 0.0)
             smile_right = blendshape_values.get("mouthSmileRight", 0.0)
+
+            smile = (smile_left + smile_right) / 2
+
+            if not wah_active and jaw_open > WAH_ON_THRESHOLD and smile < WAH_SMILE_LIMIT:
+                wah_active = True
+
+            elif wah_active and jaw_open < WAH_OFF_THRESHOLD or smile > WAH_SMILE_LIMIT:
+                wah_active = False
 
             brow_left = blendshape_values.get("browDownLeft", 0.0)
             brow_right = blendshape_values.get("browDownRight", 0.0)
 
             brow_down = (brow_left + brow_right) / 2
-
-            smile = (smile_left + smile_right) / 2
 
             if not distortion_active and brow_down > BROW_ON_THRESHOLD:
                 distortion_active = True
@@ -186,7 +187,109 @@ with AudioStream(
             previous_chorus_active = chorus_active
             previous_wah_active = wah_active
 
+        distortion_text = "DISTORTION: " + ("ON" if distortion_active else "OFF")
+        distortion_color = (0, 0, 255) if distortion_active else (160, 160, 160)
 
+        chorus_text = "CHORUS: " + ("ON" if chorus_active else "OFF")
+        chorus_color = (255, 255, 0) if chorus_active else (160, 160, 160)
+
+        wah_percentage = int(wah_position * 100)
+
+        if wah_active:
+            wah_text = f"WAH: {wah_percentage}%"
+        else:
+            wah_text = "WAH: OFF"
+
+        BAR_WIDTH = 300
+        BAR_HEIGHT = 20
+        BAR_X = 30
+        BAR_Y = 225
+
+        if wah_active:
+            filled_width = int(BAR_WIDTH * wah_position)
+        else:
+            filled_width = 0
+
+        overlay = frame.copy()
+
+        alpha = 0.5
+
+        cv2.rectangle(
+            overlay,
+            (15, 15),
+            (380, 275),
+            (0, 0, 0),
+            -1
+        )
+        cv2.addWeighted(
+            overlay,
+            alpha,
+            frame,
+            1 - alpha,
+            0,
+            frame
+        )
+
+        cv2.putText(
+            frame,
+            "FACE PEDAL!",
+            (95, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.1,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
+
+        cv2.putText(
+            frame,
+            distortion_text,
+            (30, 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            distortion_color,
+            2,
+            cv2.LINE_AA
+        )
+
+        cv2.putText(
+            frame,
+            chorus_text,
+            (30, 150),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            chorus_color,
+            2,
+            cv2.LINE_AA
+        )
+
+        cv2.putText(
+            frame,
+            wah_text,
+            (30, 200),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
+
+        cv2.rectangle(
+            frame,
+            (BAR_X, BAR_Y),
+            (BAR_X + BAR_WIDTH, BAR_Y + BAR_HEIGHT),
+            (255, 255, 255),
+            2
+        )
+
+        cv2.rectangle(
+            frame,
+            (BAR_X, BAR_Y),
+            (BAR_X + filled_width, BAR_Y + BAR_HEIGHT),
+            (0, 255, 0),
+            -1
+        )
+        
         # Display the frame that it read from the camera stored in the frame variable
         cv2.imshow("Face Pedal Camera", frame)
 
